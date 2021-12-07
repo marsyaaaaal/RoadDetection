@@ -16,7 +16,7 @@ def bubbleSort(arr):
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
                 final_contours[j], final_contours[j + 1] = final_contours[j + 1], final_contours[j]
 
-path = 'road1.png'
+path = 'road.jpg'
 img_orig = cv2.imread(path)
 
 #image pre-processing
