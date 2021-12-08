@@ -16,7 +16,7 @@ def bubbleSort(arr):
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
                 final_contours[j], final_contours[j + 1] = final_contours[j + 1], final_contours[j]
 
-path = 'road.jpeg'
+path = 'road.jpg'
 img_orig = cv2.imread(path)
 
 #image pre-processing
@@ -25,6 +25,7 @@ img = cv2.equalizeHist(img)
 kernel = np.ones((2,2), np.uint8)
 img = cv2.GaussianBlur(img,(3,3),0)
 img = cv2.erode(img, kernel, iterations=1)
+cv2.imshow("ss", img)
 # img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 # lower_blue = np.array([60, 35, 140])
 # upper_blue = np.array([180, 255, 255])
@@ -107,6 +108,17 @@ gray_3_light = (gray_1+gray_2)/2
 #drawing the contours
 lst_intensities = []
 pixel_counter = []
+#convert img to hsv
+# GRAY_MAX= np.array([180, 18, 230],np.uint8)
+# GRAY_MIN = np.array([0, 0, 40],np.uint8)
+# cv2.imshow('output2grassy', img_orig)
+
+# imt_test = np.array(img_orig)
+# imt_test = cv2.cvtColor(imt_test,cv2.COLOR_BGR2HSV)
+# cv2.imshow('output2grasssy', imt_test)
+# frame_threshed = cv2.inRange(imt_test, GRAY_MIN, GRAY_MAX)
+# cv2.imshow('output2gray', frame_threshed)
+
 for i in range(len(final_contours)):
     convexHull = cv2.convexHull(final_contours[i])
     cimg = np.zeros_like(img_to_draw) #creating a mask
@@ -144,7 +156,9 @@ for score in pixel_counter:
 # masking the contours to the original image
 final_contours = final_contours[:len(new_pixel_counter)]
 masked = np.zeros_like(img_to_draw)
+
 for contour in final_contours:
+    print(contour)
     convexHull = cv2.convexHull(contour)
     cv2.drawContours(masked, [convexHull], -1, color=255, thickness= -1)
     pts = np.where(masked == 255)
