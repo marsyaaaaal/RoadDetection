@@ -16,8 +16,10 @@ import cv2
 #                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
 #                 final_contours[j], final_contours[j + 1] = final_contours[j + 1], final_contours[j]
 
-path = 'road1.png'
+path = 'road3.jpg'
 img_orig = cv2.imread(path)
+cv2.imshow('ouaatput2gray', img_orig)
+
 
 #image pre-processing
 img = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
@@ -26,27 +28,27 @@ kernel = np.ones((2,2), np.uint8)
 img = cv2.GaussianBlur(img,(3,3),0)
 img = cv2.erode(img, kernel, iterations=1)
 
-GRAY_MAX= np.array([180, 18, 230],np.uint8)
-GRAY_MIN = np.array([0, 0, 40],np.uint8)
+GRAY_MAX= np.array([179, 15, 230],np.uint8)
+GRAY_MIN = np.array([0, 0, 10],np.uint8)
 
 imt_test = np.array(img_orig)
 imt_test = cv2.cvtColor(imt_test,cv2.COLOR_BGR2HSV)
 frame_threshed = cv2.inRange(imt_test, GRAY_MIN, GRAY_MAX)
 cv2.imshow('output2gray', frame_threshed)
 
-ret, thresh = cv2.threshold(frame_threshed, 145, 255, 1)
-cv2.imshow('thresh', thresh)
-kernel = np.ones((2, 2),np.uint8)
-erosion = cv2.morphologyEx(thresh, cv2.MORPH_ERODE, kernel, iterations = 2)
-cv2.imshow('erode', erosion)
+# ret, thresh = cv2.threshold(frame_threshed, 145, 255, 1)
+# cv2.imshow('thresh', thresh)
+# kernel = np.ones((2, 2),np.uint8)
+# erosion = cv2.morphologyEx(thresh, cv2.MORPH_ERODE, kernel, iterations = 2)
+# cv2.imshow('erode', erosion)
 
-#---- I then inverted this image and blurred it with a kernel size of 15. The reason for such a huge kernel is to obtain a smooth leaf edge ----
-ret, thresh1 = cv2.threshold(erosion, 127, 255, 1)
-ret, thresh1_1 = cv2.threshold(thresh1, 127, 255, 1)
-ret, thresh1_1 = cv2.threshold(thresh1_1, 127, 255, 1)
-cv2.imshow('thresh1_1', thresh1_1)
+# #---- I then inverted this image and blurred it with a kernel size of 15. The reason for such a huge kernel is to obtain a smooth leaf edge ----
+# ret, thresh1 = cv2.threshold(erosion, 127, 255, 1)
+# ret, thresh1_1 = cv2.threshold(thresh1, 127, 255, 1)
+# ret, thresh1_1 = cv2.threshold(thresh1_1, 127, 255, 1)
+# cv2.imshow('thresh1_1', thresh1_1)
 
-#---- And then performed morphological erosion to thin the edge. For this I used an ellipse structuring element of kernel size 5 ----
+# #---- And then performed morphological erosion to thin the edge. For this I used an ellipse structuring element of kernel size 5 ----
 kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,1))
 final = cv2.morphologyEx(frame_threshed, cv2.MORPH_CLOSE, kernel1, iterations = 2)
 cv2.imshow('final', final)
@@ -58,7 +60,6 @@ masked = np.zeros_like(img_orig)
 img_size = img_orig.shape[0] * img_orig.shape[1]
 MIN_SIZE = int(img_size*0.0010)
 print(MIN_SIZE)
-
 
 for contour in contours:
     area = cv2.contourArea(contour)
@@ -74,6 +75,43 @@ for contour in contours:
     masked[pts[0],pts[1]]=img_orig[pts[0], pts[1]]     
 
 cv2.imshow('aaa', masked)
+
+edge = cv2.Canny(masked, 50,100)
+cv2.imshow('aassa', edge)
+
+ret, thresh = cv2.threshold(edge, 145, 255, 1)
+cv2.imshow('thresh', thresh)
+kernel = np.ones((2, 2),np.uint8)
+erosion = cv2.morphologyEx(thresh, cv2.MORPH_ERODE, kernel, iterations = 2)
+cv2.imshow('erode', erosion)
+
+#---- I then inverted this image and blurred it with a kernel size of 15. The reason for such a huge kernel is to obtain a smooth leaf edge ----
+ret, thresh1 = cv2.threshold(erosion, 127, 255, 1)
+ret, thresh1_1 = cv2.threshold(thresh1, 127, 255, 1)
+# ret, thresh1_1 = cv2.threshold(thresh1_1, 127, 255, 1)
+cv2.imshow('thresh1_1', thresh1_1)
+
+# #---- And then performed morphological erosion to thin the edge. For this I used an ellipse structuring element of kernel size 5 ----
+kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,1))
+final = cv2.morphologyEx(thresh1_1, cv2.MORPH_CLOSE, kernel1, iterations = 2)
+cv2.imshow('final', final)
+
+contours, hierarchy = cv2.findContours(final, 
+    cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+masked1 = np.zeros_like(img_orig)
+# cv2.imshow('final', final)
+
+for contour in contours:
+    area = cv2.contourArea(contour)
+    if area < MIN_SIZE:
+        cv2.fillPoly(masked1, pts=[contour], color=0)
+        continue
+
+    convexHull = cv2.convexHull(contour)
+    cv2.drawContours(masked1, [convexHull], -1, color=255, thickness= -1)
+    pts = np.where(masked1 == 255)
+    masked1[pts[0],pts[1]]=masked[pts[0], pts[1]]    
+cv2.imshow('finalssssss', masked1)
 
 # for contour in final_contours:
 #     print(contour)
