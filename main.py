@@ -16,7 +16,7 @@ def bubbleSort(arr):
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
                 final_contours[j], final_contours[j + 1] = final_contours[j + 1], final_contours[j]
 
-path = 'road.jpg'
+path = 'road.jpeg'
 img_orig = cv2.imread(path)
 
 #image pre-processing
@@ -73,8 +73,6 @@ cv2.imshow('thresh1_1', thresh1_1)
 blur = cv2.blur(thresh1_1, (5, 5))
 cv2.imshow('blur', blur)
 
-#---- I again performed another threshold on this image to get the central portion of the edge ----
-ret, thresh2 = cv2.threshold(blur, 145, 255, 0)
 #---- And then performed morphological erosion to thin the edge. For this I used an ellipse structuring element of kernel size 5 ----
 kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
 final = cv2.morphologyEx(thresh1_1, cv2.MORPH_ERODE, kernel1, iterations = 2)
@@ -88,7 +86,7 @@ img_to_draw = np.array(img_orig)
 
 #setting the minimum contour size (dependent to img size)
 img_size = img_orig.shape[0] * img_orig.shape[1]
-min_size = int(img_size*0.00050)
+min_size = int(img_size*0.00090)
 
 #getting only the contours with large sizes
 final_contours = []
@@ -115,22 +113,24 @@ for i in range(len(final_contours)):
     cv2.drawContours(cimg, [convexHull], -1, color=255, thickness= -1)
 
     pts = np.where(cimg == 255)
-    lst_intensities.append(img_orig[pts[0], pts[1]])
+    lst_intensities = [img_orig[pts[0], pts[1]]]
     counter = 0
     #traversing through pixel values of contours
-    for x in range(len(lst_intensities[i])):
-        r = int(lst_intensities[i][x][2])
-        g = int(lst_intensities[i][x][1])
-        b = int(lst_intensities[i][x][0])
-        gray_1 = ((np.abs(r-g)+np.abs(r-b)+np.abs(g-b))/3)
-        gray_2 = np.abs((r + g + b)/3)-0.5
-        gray_3 = (gray_1+gray_2)/2
+    for x in range(len(lst_intensities)):
+        r = int(lst_intensities[0][x][2])
+        g = int(lst_intensities[0][x][1])
+        b = int(lst_intensities[0][x][0])
+        # gray_1 = ((np.abs(r-g)+np.abs(r-b)+np.abs(g-b))/3)
+        # gray_2 = np.abs((r + g + b)/3)-0.5
+        # gray_3 = (gray_1+gray_2)/2
         #filtering the gray pixels
-        if gray_3 > gray_3_dark and gray_3 < gray_3_light:
+        # if gray_3 > gray_3_dark and gray_3 < gray_3_light:
+        #     counter = counter + 1
+        if (r<=125 and r>=40) and (g>=40 and g<=125) and (b<=125 and b>=40):
             counter = counter + 1
     
     #getting how many gray percent is the contour 
-    percentage = (counter/len(lst_intensities[i]))*100
+    percentage = (counter/len(lst_intensities))*100
     pixel_counter.append(percentage)
 
 #calling bubble sort to sort the contours with highest gray values 
