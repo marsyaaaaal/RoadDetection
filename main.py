@@ -2,6 +2,9 @@
 import numpy as np
 import cv2
 
+#NOTE: All kernel sizes are adjustable dependent to the results of testing
+# but this default sizes are the ones we recommend during our testin
+
 # sorting algorithm for sorting of contour sizes
 def bubbleSort(arr):
     n = len(arr)
@@ -17,7 +20,7 @@ def bubbleSort(arr):
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
                 final_contours[j], final_contours[j + 1] = final_contours[j + 1], final_contours[j]
 
-path = 'road2.jpg' # filename/path of image
+path = 'road18.jpg' # filename/path of image
 img_orig = cv2.imread(path)
 cv2.imshow("Original Inputted Image", img_orig)
 
@@ -30,7 +33,7 @@ img = cv2.erode(img, kernel, iterations=1)
 cv2.imshow("Pre-processed image", img)
 
 #performing canny edge detection
-edges = cv2.Canny(img,75,180)
+edges = cv2.Canny(img,75,200,3) # default 75, 180
 cv2.imshow("Canny edges",edges)
 
 # Inverting the edges image then running erosion to make the edges thicker and eliminate false edges
@@ -49,7 +52,7 @@ contours, hierarchy = cv2.findContours(final,
 contours = sorted(contours, key = len, reverse=True) #sorting the contours with respect to their their size
 
 
-#setting the minimum contour/descriptor size (dependent to img area)
+#setting the minimum contour/descriptor size (dependent to image area)
 img_size = img_orig.shape[0] * img_orig.shape[1]
 min_size = int(img_size*0.00090) # adjustable size, depends on testing state to adjust the value
 
@@ -58,8 +61,6 @@ final_contours = []
 for i in contours:
     if len(i)> min_size:
         final_contours.append(i)
-
-
 
 # Here we determine if the image is light or dark, we used HSV color space and calulated the mean of V
 # We copied the original image to another variable and converted it to HSV
@@ -123,8 +124,8 @@ for contour in final_contours:
 
 #Merging nearby Contours to eliminate small spaces between them
 masked = cv2.cvtColor(masked,cv2.COLOR_BGR2GRAY)
-# using the MORPH_CLOSE to merge the nearby contours using getStructuringElement kernel ellipse morph and size of 29,29
-merged_contours = cv2.morphologyEx(masked, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (29,29)))
+# using the MORPH_CLOSE to merge the nearby contours using getStructuringElement kernel ellipse morph and size of 20,20
+merged_contours = cv2.morphologyEx(masked, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20,20)))
 
 # We assume that nearby contours are parts of the road that are separated of lines/edges
 # Find contours in merged_contours after closing the gaps 
@@ -138,11 +139,11 @@ min_size = int(img_size*0.05)
 # Drawing and blending the final contours 
 for contour in contours:
     area = cv2.contourArea(contour) # getting the area of each contour
-    print(area, min_size)
     # contours lower than 5% of img size are ignored
     if area < min_size:
         continue
     # draw the contours that are larger than 5% of img size 
+    # convex = cv2.convexHull(contour)
     cv2.drawContours(bg, [contour], -1, (0,0,255), thickness= -1)
     
 # blending the red area road surface to the original image
