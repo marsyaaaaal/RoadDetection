@@ -2,6 +2,7 @@
 import numpy as np
 import cv2
 
+# sorting algorithm for sorting of contour sizes
 def bubbleSort(arr):
     n = len(arr)
     # Traverse through all array elements
@@ -16,240 +17,139 @@ def bubbleSort(arr):
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
                 final_contours[j], final_contours[j + 1] = final_contours[j + 1], final_contours[j]
 
-path = 'road5.jpg'
+path = 'road2.jpg' # filename/path of image
 img_orig = cv2.imread(path)
-# print(img_orig[:,1])
-# print(img_orig[:,1]*[[1,1,1],
-#                      [1,1,1],
-#                      [1,1,1]])
-#image pre-processing
+cv2.imshow("Original Inputted Image", img_orig)
+
+#image pre-processing, converting to grayscale, histogram and applying smoothing using gaussian and erosion
 img = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
-img = cv2.equalizeHist(img)
-kernel = np.ones((2,2), np.uint8)
+img = cv2.equalizeHist(img) #performing histogram equalization to equalize the distribution of pixels
+kernel = np.ones((2,2), np.uint8) # small kernel size only for erosion 
 img = cv2.GaussianBlur(img,(3,3),0)
 img = cv2.erode(img, kernel, iterations=1)
-cv2.imshow("ss", img)
-# img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-# lower_blue = np.array([60, 35, 140])
-# upper_blue = np.array([180, 255, 255])
-# mask = cv2.inRange(img, lower_blue, upper_blue)
-#warping
-# IMAGE_H = img.shape[0]
-# IMAGE_W = img.shape[1]
+cv2.imshow("Pre-processed image", img)
 
-# src = np.float32([[0, IMAGE_H], [1207, IMAGE_H], [0, 0], [IMAGE_W, 0]])
-# dst = np.float32([[569, IMAGE_H], [711, IMAGE_H], [0, 0], [IMAGE_W, 0]])
-# M = cv2.getPerspectiveTransform(src, dst) # The transformation matrix
-# Minv = cv2.getPerspectiveTransform(dst, src) # Inverse transformation
-
-# # img = cv2.imread('./test_img.jpg') # Read the test img
-# img_w = img[450:(450+IMAGE_H), 0:IMAGE_W] # Apply np slicing for ROI crop
-# warped_img = cv2.warpPerspective(img_w, M, (IMAGE_W, IMAGE_H))
-
-# img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-
-# twoDimage = img.reshape((-1,3))
-# twoDimage = np.float32(twoDimage)
-
-# criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-# K = 2
-# attempts=20
-
-# ret,label,center=cv2.kmeans(twoDimage,K,None,criteria,attempts,cv2.KMEANS_PP_CENTERS)
-# center = np.uint8(center)
-# res = center[label.flatten()]
-# result_image = res.reshape((img.shape))
-# print(result_image.shape)
-# print(img.shape)
-
-#performed canny edge
+#performing canny edge detection
 edges = cv2.Canny(img,75,180)
-cv2.imshow("edges",edges)
-#---- Next I performed morphological erosion for a rectangular structuring element of kernel size 7 ----
-ret, thresh = cv2.threshold(edges, 127, 255, 1)
-kernel = np.ones((2, 2),np.uint8)
-erosion = cv2.morphologyEx(thresh, cv2.MORPH_ERODE, kernel, iterations = 2)
+cv2.imshow("Canny edges",edges)
 
-#---- I then inverted this image and blurred it with a kernel size of 15. The reason for such a huge kernel is to obtain a smooth leaf edge ----
-ret, thresh1 = cv2.threshold(erosion, 127, 255, 1)
-ret, thresh1_1 = cv2.threshold(thresh1, 127, 255, 1)
-cv2.imshow('thresh1_1', thresh1_1)
-blur = cv2.blur(thresh1_1, (5, 5))
-cv2.imshow('blur', blur)
+# Inverting the edges image then running erosion to make the edges thicker and eliminate false edges
+ret, inverted = cv2.threshold(edges, 127, 255, 1)
+erosion = cv2.morphologyEx(inverted, cv2.MORPH_ERODE, kernel, iterations = 2)
+cv2.imshow('Inverted and Erode', erosion)
+#Applying final erosion using getStructuralElement of ellipse kernel size of 3,3
+#Using MORPH_ELLIPSE makes the edges/lines ellipse shaped rather than use MORPH_RECT since ellipses are more flexible than rectangles
+kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+final = cv2.morphologyEx(erosion, cv2.MORPH_ERODE, kernel1, iterations = 2)
+cv2.imshow('Processed', final)
 
-#---- And then performed morphological erosion to thin the edge. For this I used an ellipse structuring element of kernel size 5 ----
-kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
-final = cv2.morphologyEx(thresh1_1, cv2.MORPH_ERODE, kernel1, iterations = 2)
-
-rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 4))
-threshed = cv2.morphologyEx(final, cv2.MORPH_CLOSE, rect_kernel)
-cv2.imshow('final', threshed)
-contours, hierarchy = cv2.findContours(threshed, 
+#Finding contours/shapes/descriptor from the final processed image
+contours, hierarchy = cv2.findContours(final, 
     cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-contours = sorted(contours, key = len, reverse=True) #sorting the contours through their size
+contours = sorted(contours, key = len, reverse=True) #sorting the contours with respect to their their size
 
 
-img_to_draw = np.array(img_orig)
-
-#setting the minimum contour size (dependent to img size)
+#setting the minimum contour/descriptor size (dependent to img area)
 img_size = img_orig.shape[0] * img_orig.shape[1]
-min_size = int(img_size*0.00090) # adjust 0.00080-0.00090
+min_size = int(img_size*0.00090) # adjustable size, depends on testing state to adjust the value
 
-#getting only the contours with large sizes
-
-
+#getting only the contours with large sizes grater than the min_size initialized above
 final_contours = []
 for i in contours:
     if len(i)> min_size:
         final_contours.append(i)
-# final_contours = final_contours[:1]
-#setting the lower and uppwer gray valuues
-#for dark gray 
-# gray_1 = ((np.abs(30-30)+np.abs(30-30)+np.abs(30-30))/3)
-# gray_2 = np.abs((30 + 30 + 30)/3)-0.5
-# gray_3_dark = (gray_1+gray_2)/2
-# #for light gray 
-# gray_1 = ((np.abs(224-224)+np.abs(224-224)+np.abs(224-224))/3)
-# gray_2 = np.abs((224 + 224 + 224)/3)-0.5
-# gray_3_light = (gray_1+gray_2)/2
 
-#drawing the contours
-lst_intensities = []
-pixel_counter = []
-#convert img to hsv
-# GRAY_MAX= np.array([180, 18, 230],np.uint8)
-# GRAY_MIN = np.array([0, 0, 40],np.uint8)
-# cv2.imshow('output2grassy', img_orig)
 
+
+# Here we determine if the image is light or dark, we used HSV color space and calulated the mean of V
+# We copied the original image to another variable and converted it to HSV
 imt_test = np.array(img_orig)
-
 imt_test = cv2.cvtColor(imt_test,cv2.COLOR_BGR2HSV)
 average_value = np.mean(imt_test[:,1,2])
-print(average_value)
 
+# We assumed that if the image is dark (average V is lower than or equal 40) the pixels of the image (especially the road) will be lowered to
+# therefore we must, lower also the minimum value to 0, otherwise if the image is light (average V is greater than 40) the pixels
+# of the image will have a high values so we will adjust the min value to -50
+if average_value <=40: 
+    min_value = 0
+else:
+    min_value = -50
 
-# cv2.imshow('output2grasssy', hist)
-# frame_threshed = cv2.inRange(imt_test, GRAY_MIN, GRAY_MAX)
-# cv2.imshow('output2gray', frame_threshed)
+contour_pixels = [] # varaible storage for pixels of contours
+gray_pixel_counter = [] # varaible storage for number of gray pixels of each contours
 
-for i in range(len(final_contours)):
-    # convexHull = cv2.convexHull(final_contours[i])
-    cimg = np.zeros_like(img_to_draw) #creating a mask
-    cv2.drawContours(cimg, [final_contours[i]], -1, color=255, thickness= -1)
-   
-    pts = np.where(cimg == 255)
-    if average_value <=127:
-        lst_intensities = [img_orig[pts[0], pts[1]]]
-    else:
-        lst_intensities = [imt_test[pts[0], pts[1]]]
-    
-    counter = 0
-    #traversing through pixel values of contours
-    for x in range(len(lst_intensities[0])):
-        r = int(lst_intensities[0][x][2])
-        g = int(lst_intensities[0][x][1])
-        b = int(lst_intensities[0][x][0])
-        # gray_1 = ((np.abs(r-g)+np.abs(r-b)+np.abs(g-b))/3)
-        # gray_2 = np.abs((r + g + b)/3)-0.5
-        # gray_3 = (gray_1+gray_2)/2
-        #filtering the gray pixels
-        # if gray_3 > gray_3_dark and gray_3 < gray_3_light:
-        #     counter = counter + 1
-        if average_value <=127:
-             if (r<=125 and r>=20) and (g>=20 and g<=125) and (b<=125 and b>=20):
-                counter = counter + 1
-        else:
-            if (r<=179 and r>=0) and (g>=0 and g<=15) and (b<=230 and b>=10):
-                counter = counter + 1
-    
-       
-    #getting how many gray percent is the contour 
-    percentage = (counter/len(lst_intensities[0]))*100
-    print(counter, "----", len(lst_intensities[0]))
-    pixel_counter.append(percentage)
-
-print(pixel_counter)
-
-#calling bubble sort to sort the contours with highest gray values 
-bubbleSort(pixel_counter)
-#filterring only contours with 60% above gray areas
-new_pixel_counter=[]
-for score in pixel_counter:
-    if score >=60:
-        new_pixel_counter.append(score)
-print(new_pixel_counter)
-# masking the contours to the original image
-final_contours = final_contours[:len(new_pixel_counter)]
-
-bg = img_to_draw.copy()
-masked = np.zeros_like(img_to_draw)
+# Here we loop through all candidate contours/descriptors for road surface and then count the pixels inside each 
+# contours within the gray space.
 for contour in final_contours:
-    convexHull = cv2.convexHull(contour)
-    cv2.drawContours(masked, [convexHull], -1, color=255, thickness= 2)
+    cimg = np.zeros_like(img_orig) #creating a mask for each contour
+    cv2.drawContours(cimg, [contour], -1, color=255, thickness= -1) # drawing the contour inside the empty mask and coloring them 255(white)
+    pts = np.where(cimg == 255)# extracting points from the mask that has a value of 255(white)
+    contour_pixels = [img_orig[pts[0], pts[1]]] # since we got the points of the contour, we get the pixels from the image using the extracted points  
+    counter = 0
     
+    #traversing through pixel values of contours to know if the pixel is within the gray level
+    for x in range(len(contour_pixels[0])):
+        r = int(contour_pixels[0][x][2]) # red value of pixel x
+        g = int(contour_pixels[0][x][1]) # green value of pixel x
+        b = int(contour_pixels[0][x][0]) # blue value of pixel x
+  
+        # if one of the rgb values is too high(higher than 200 ) or low, dont execute 
+        if ( r < 200 and g < 200 and b < 200) and ( r > 20 and g > 20 and b > 20):
+            if (r-g-b < min_value):
+                counter = counter + 1 # iterate counter
+                  
+    #getting how many gray percent is within the contour 
+    percentage = (counter/len(contour_pixels[0]))*100
+    gray_pixel_counter.append(percentage)
+
+#Sort the pixels
+bubbleSort(gray_pixel_counter)
+
+#eliminating contours that is lower than 60% gray pixels  
+final_gray_contour_scores=[] # new variable storage of contours that has gray pixels higher than or equal to 60%
+for score in gray_pixel_counter:
+    if score >=60:
+        final_gray_contour_scores.append(score)
+        
+# Getting only contours that are remained from filtering above
+final_contours = final_contours[:len(final_gray_contour_scores)]
+bg = img_orig.copy() # making a copy of original image
+masked = np.zeros_like(img_orig) # making a mask for drawing the contours
+# Drawing the final contours to the empty image
+for contour in final_contours:
+    cv2.drawContours(masked, [contour], -1, color=255, thickness= 2)
     pts = np.where(masked == 255)
     masked[pts[0],pts[1]]= (255,255,255)
 
-#merge nearby contours
+#Merging nearby Contours to eliminate small spaces between them
 masked = cv2.cvtColor(masked,cv2.COLOR_BGR2GRAY)
-ret, thresh = cv2.threshold(masked, 127, 255, 1)
-ret, thresh1 = cv2.threshold(thresh, 127, 255, 1)
-thresh_gray = cv2.morphologyEx(masked, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (51,51)))
+# using the MORPH_CLOSE to merge the nearby contours using getStructuringElement kernel ellipse morph and size of 29,29
+merged_contours = cv2.morphologyEx(masked, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (29,29)))
 
-# Find contours in thresh_gray after closing the gaps
-contours, hier = cv2.findContours(thresh_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+# We assume that nearby contours are parts of the road that are separated of lines/edges
+# Find contours in merged_contours after closing the gaps 
+# So for example 2 contours are merged then will be classified as one contour
+contours, hier = cv2.findContours(merged_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-
-#compute for the 10% of img size
+#compute for the 5% of img size as minimum contour area
 img_size = img_orig.shape[0] * img_orig.shape[1]
-min_size = int(img_size*0.1)
+min_size = int(img_size*0.05)
 
+# Drawing and blending the final contours 
 for contour in contours:
-    convexHull = cv2.convexHull(contour)
-    # cv2.drawContours(masked, [convexHull], -1, color=255, thickness= 2)
-    area = cv2.contourArea(contour)
-    # contours lower than 10% of img size are ignored
+    area = cv2.contourArea(contour) # getting the area of each contour
+    print(area, min_size)
+    # contours lower than 5% of img size are ignored
     if area < min_size:
         continue
-    cv2.drawContours(bg, [convexHull], -1, (0,0,255), thickness= -1)
-# blending the red area road surface
+    # draw the contours that are larger than 5% of img size 
+    cv2.drawContours(bg, [contour], -1, (0,0,255), thickness= -1)
+    
+# blending the red area road surface to the original image
 alpha = 0.25
-result = cv2.addWeighted(img_orig, 1-alpha, bg, alpha, 0)
+final_ouput = cv2.addWeighted(img_orig, 1-alpha, bg, alpha, 0)
 
-cv2.imshow('masked image', thresh_gray)
-cv2.imshow('Final', result)
-
-
-# rho = 1  # distance resolution in pixels of the Hough grid
-# theta = np.pi / 180  # angular resolution in radians of the Hough grid
-# threshold = 15  # minimum number of votes (intersections in Hough grid cell)
-# min_line_length = 25  # minimum number of pixels making up a line
-# max_line_gap = 10  # maximum gap in pixels between connectable line segments
-# line_image = np.copy(img) * 0  # creating a blank to draw lines on
-
-#flood filling 
-# edges = edges.astype(np.uint8)
-# h,w = img.shape[:2]
-# mask = np.zeros((h+2,w+2), np.uint8)
-# cv2.floodFill(edges, mask, (250, 250),255)
-
-# result_image = cv2.bitwise_and(img, img, mask = mask)
-
-#hole filling
-# im_floodfill_inv = cv2.bitwise_not(result_image)
-# im_out = img | im_floodfill_inv
-
-# edges = cv2.cvtColor(edges,cv2.COLOR_GRAY2BGR)
-
-# transparent = np.zeros((img.shape[0], img.shape[1], 4), dtype=np.uint8)
-
-# transparent[:,:,0:3] = img
-# transparent[:, :,3] = edges
-# cv2.imshow("masked",transparent)
-# cv2.imshow("edge",edges)
-# cv2.imshow("warped",warped_img)
-
-
-
+cv2.imshow('Final Contours', merged_contours)
+cv2.imshow('Final road surface', final_ouput)
 cv2.waitKey()
 cv2.destroyAllWindows()
