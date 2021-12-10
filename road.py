@@ -1,8 +1,11 @@
 
 import numpy as np
 import cv2
+import argparse
 
-#NOTE: All kernel sizes are adjustable dependent to the results of testing
+# USAGE: python road.py -i imagefilename.jpg
+
+# NOTE: All kernel sizes are adjustable dependent to the results of testing
 # but this default sizes are the ones we recommend during our testin
 
 # sorting algorithm for sorting of contour sizes
@@ -19,32 +22,37 @@ def bubbleSort(arr):
             if arr[j] < arr[j + 1] :
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
                 final_contours[j], final_contours[j + 1] = final_contours[j + 1], final_contours[j]
-
-path = 'road18.jpg' # filename/path of image
+                
+def check_input(img):
+    if cv2.haveImageReader(img):
+        return img
+    raise argparse.ArgumentTypeError("Invalid File, either missing or invalid file format",img)
+    
+# Getting the image filename on the commandline      
+ap = argparse.ArgumentParser()
+# Add the arguments to the parser
+ap.add_argument("-i","--image", required=True,
+   help="image filename", type=check_input)
+args = vars(ap.parse_args())
+path = args['image'] # filename of image
 img_orig = cv2.imread(path)
-cv2.imshow("Original Inputted Image", img_orig)
 
 #image pre-processing, converting to grayscale, histogram and applying smoothing using gaussian and erosion
 img = cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY)
 img = cv2.equalizeHist(img) #performing histogram equalization to equalize the distribution of pixels
 kernel = np.ones((2,2), np.uint8) # small kernel size only for erosion 
 img = cv2.GaussianBlur(img,(3,3),0)
-img = cv2.erode(img, kernel, iterations=1)
-cv2.imshow("Pre-processed image", img)
+img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel, iterations = 1)
 
 #performing canny edge detection
 edges = cv2.Canny(img,75,200,3) # default 75, 180
-cv2.imshow("Canny edges",edges)
-
 # Inverting the edges image then running erosion to make the edges thicker and eliminate false edges
 ret, inverted = cv2.threshold(edges, 127, 255, 1)
 erosion = cv2.morphologyEx(inverted, cv2.MORPH_ERODE, kernel, iterations = 2)
-cv2.imshow('Inverted and Erode', erosion)
 #Applying final erosion using getStructuralElement of ellipse kernel size of 3,3
 #Using MORPH_ELLIPSE makes the edges/lines ellipse shaped rather than use MORPH_RECT since ellipses are more flexible than rectangles
 kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
 final = cv2.morphologyEx(erosion, cv2.MORPH_ERODE, kernel1, iterations = 2)
-cv2.imshow('Processed', final)
 
 #Finding contours/shapes/descriptor from the final processed image
 contours, hierarchy = cv2.findContours(final, 
@@ -143,14 +151,13 @@ for contour in contours:
     if area < min_size:
         continue
     # draw the contours that are larger than 5% of img size 
-    # convex = cv2.convexHull(contour)
     cv2.drawContours(bg, [contour], -1, (0,0,255), thickness= -1)
     
 # blending the red area road surface to the original image
 alpha = 0.25
-final_ouput = cv2.addWeighted(img_orig, 1-alpha, bg, alpha, 0)
+road_surface = cv2.addWeighted(img_orig, 1-alpha, bg, alpha, 0)
 
-cv2.imshow('Final Contours', merged_contours)
-cv2.imshow('Final road surface', final_ouput)
+winname = "Final road surface"
+cv2.imshow(winname, road_surface)
 cv2.waitKey()
 cv2.destroyAllWindows()
