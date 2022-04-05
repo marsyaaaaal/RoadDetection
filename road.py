@@ -48,13 +48,11 @@ img = cv2.GaussianBlur(img,(3,3),0)
 v = np.median(img)
 
 img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel, iterations = 1)
-cv2.imshow("p",img)
 
 #performing canny edge detection
 sigma = 0.33
 lower = int(max(0, (1.0 - sigma) * v))
 upper = lower * 2.5
-print(lower, upper,v)
 
 
 edges = cv2.Canny(img,lower,upper,1) # default 75, 200
