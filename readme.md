@@ -31,3 +31,5 @@ Clone this repo:
 ```bash 
 python road.py -i data/road.jpg
 ```
+
+## Best for road images that aren't noisy (clean version of road) and lesser road details, since it relies on pixe-based extraction
