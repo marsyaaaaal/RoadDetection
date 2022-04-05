@@ -13,7 +13,8 @@ Clone this repo:
 git clone https://github.com/marsyaaaaal/RoadDetection
 ```
 
-Requirements:
+# Requirements:
+Python >= 3.7
 
 ```bash 
 pip install opencv-python
@@ -25,9 +26,7 @@ pip install numpy
 ```
 
 
-# Run road.py:
-
-Clone this repo:
+# Run road.py::
 ```bash 
 python road.py -i data/road.jpg
 ```
