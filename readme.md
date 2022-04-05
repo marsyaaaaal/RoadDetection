@@ -14,7 +14,7 @@ git clone https://github.com/marsyaaaaal/RoadDetection
 ```
 
 # Requirements:
-Python >= 3.7
+Python >= 3.7 https://www.python.org/downloads/
 
 Opencv
 
