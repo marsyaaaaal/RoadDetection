@@ -15,6 +15,8 @@ git clone https://github.com/marsyaaaaal/RoadDetection
 
 # Requirements:
 Python >= 3.7
+Opencv
+Numpy
 
 ```bash 
 pip install opencv-python
